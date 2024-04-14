@@ -30,7 +30,23 @@ app.use(function(request , result , next){
     next() ;
 });
 
+var formidable = require("express-formidable");
+app.use(formidable());
 
+var bcrypt = require("bcrypt");
+var nodemailer = require("nodemailer");
+
+var nodemailerFrom = "ishitamoorjani@gmail.com" ;
+var nodemailerObject = {
+    service: "gmail" ,
+    host: "smtp.gmail.com" ,
+    port: 465 ,
+    secure: true ,
+    auth: {
+        user: "ishitamoorjani@gmail.com" ,
+        pass: "password"
+    }
+};
 
 http.listen(3000, function() {
     console.log("Server started at " + mainURL);
@@ -46,6 +62,79 @@ http.listen(3000, function() {
             result.render("index" , {
                 "request": request
             });
+        });
+        
+        app.get("/Register" , function(request , result) {
+            result.render("Register" , {
+                "request": request
+            });
+        });
+
+        app.post("/Register" , async function(request , result) {
+            
+            var name = request.fields.name ;
+            var email = request.fields.email ;
+            var password = request.fields.password ;
+            var reset_token = "" ;
+            var isVerified = false ;
+            var verification_token = new Date().getTime() ;
+
+            var user = await database.collection("users").findOne({
+                "email": email
+            }) ;
+
+            if(user == null) {
+                bcrypt.hash(password , 10 , async function (error , hash) {
+                    await database.collection("users").insertOne({
+                        "name": name ,
+                        "email": email ,
+                        "password": hash ,
+                        "resert_token": reset_token ,
+                        "uploaded": [] ,
+                        "sharedWithMe":[] ,
+                        "isVerified": isVerified ,
+                        "verification_token": verification_token
+                    } , async function(error , data) {
+
+                        var transporter = nodemailer.createTransport(
+                            nodemailerObject);
+                        var text = "Please verify your account by clicking the following link " +
+                        "/verifyEmail/" + email +"/" + verification_token ;
+
+                        var html = "Please verify your account by clicking the following link: <br><br> <a href= '" +
+                        mainURL + "/verifyEmail/" + email + "/" + verification_token + "'>Confirm Email</a><br><br>Thank You" ;
+
+                        await transporter.sendMail({
+                            from: nodemailerFrom,
+                            to: email,
+                            subject: "Email Verification" ,
+                            text: text,
+                            html: html
+                        }, function(error , info) {
+                            if(error) {
+                                console.error(error) ;
+                            } else {
+                                console.log("Email sent: " + info.response) ;
+                            }
+
+                            request.status = "Success" ;
+                            request.message = "Signed up successfully.An email has been sent to verify your account" ;
+
+                            result.render("Register" , {
+                               "request": request 
+                            });
+
+                        });
+                    });
+                });
+            } else{
+                request.status = "error" ;
+                request.message = "Email already exists" ;
+
+                result.render("Register" , {
+                    "request": request
+                });
+            }
         });
     }
     });
