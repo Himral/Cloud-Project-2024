@@ -44,7 +44,7 @@ var nodemailerObject = {
     secure: true ,
     auth: {
         user: "ishitamoorjani@gmail.com" ,
-        pass: "password"
+        pass: "pass"
     }
 };
 
@@ -135,6 +135,96 @@ http.listen(3000, function() {
                     "request": request
                 });
             }
+        });
+
+        app.get("/verifyEmail/:email/:verification_token" , async function(request,result) {
+
+            var email = request.params.email ;
+            var verification_token = request.params.verification_token ;
+
+            var user = await database.collection("users").findOne({
+                $and: [{
+                    "email": email,
+                }, {
+                    "verification_token": parseInt(verification_token)
+                }]
+            });
+
+            if(user == null) {
+                request.status = "error";
+                request.message = "Email does not exists.Or verification link is expired" ;
+                result.render("Login" , {
+                    "request": request
+                });
+            } else {
+                await database.collection("users").findOneAndUpdate({
+                    $and: [{
+                        "email": email,
+                    }, {
+                        "verification_token": parseInt(
+                            verification_token)
+                    }]
+                }, {
+                    $set: {
+                        "verification_token": "",
+                        "isVerified": true
+                    }
+                });
+
+                request.status = "success";
+                request.message = "Account has been verified.Please try login" ;
+                result.render("Login" , {
+                    "request": request
+                });
+            }
+        });
+
+        app.get("/Login", function (request, result) {
+            result.render("Login", {
+                "request": request
+            });
+        });
+
+        app.post("/Login", async function (request, result) {
+            var email = request.fields.email;
+            var password = request.fields.password;
+
+            var user = await database.collection("users").findOne({
+                "email": email
+            });
+
+            if (user == null) {
+                request.status = "error";
+                request.message = "Email does not exist.";
+                result.render("Login", {
+                    "request": request
+                });
+                
+                return false;
+            }
+            bcrypt.compare(password, user.password, function (error, isVerify) {
+                if (isVerify) {
+                    if(user.isVerified) {   
+                        request.session.user = user;
+                        result.redirect("/");
+
+                        return false;
+                    }
+                    
+                    request.status = "error";
+                    request.message = "Password is not correct.";
+                    result.render("Login", {
+                        "request": request
+                    });
+                    return false;
+                }
+            
+                request.status = "error";
+                request.message = "Password is not correct" ;
+                result.render("Login" , {
+                    "request": request
+                });
+            });
         });
     }
     });
