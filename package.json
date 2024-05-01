@@ -1,0 +1,19 @@
+{
+  "name": "cloud-project-2024-1",
+  "version": "1.0.0",
+  "description": "cloud project",
+  "main": "y",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^3.1.9",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "http": "^0.0.1-security",
+    "mongodb": "^6.5.0"
+  }
+}
